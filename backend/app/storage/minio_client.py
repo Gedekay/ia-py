@@ -4,6 +4,7 @@ from io import BytesIO
 
 from minio import Minio
 from minio.sse import SseS3
+from urllib3 import PoolManager, Timeout
 
 from app.core.config import get_settings
 
@@ -16,6 +17,7 @@ def get_minio_client() -> Minio:
         access_key=settings.minio_access_key,
         secret_key=settings.minio_secret_key.get_secret_value(),
         secure=settings.minio_secure,
+        http_client=PoolManager(timeout=Timeout(connect=3, read=5), retries=False),
     )
 
 

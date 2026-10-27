@@ -1,7 +1,9 @@
 from functools import lru_cache
+import json
+from typing import Annotated, Any
 
-from pydantic import Field, SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, SecretStr, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -26,8 +28,21 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_base_url: str = ""
     embedding_model: str = "text-embedding-3-small"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
     enable_docs: bool = True
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            parsed = [origin.strip() for origin in value.split(",") if origin.strip()]
+        if not isinstance(parsed, list) or not all(isinstance(origin, str) for origin in parsed):
+            raise ValueError("CORS_ORIGINS doit être une liste JSON ou une liste séparée par des virgules.")
+        return parsed
 
 
 @lru_cache

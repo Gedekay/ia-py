@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
@@ -63,21 +64,30 @@ def create_app() -> FastAPI:
         services: dict[str, str] = {}
         try:
             async with async_session_maker() as session:
-                await session.execute(text("SELECT 1"))
+                await asyncio.wait_for(session.execute(text("SELECT 1")), timeout=2)
             services["database"] = "ok"
         except Exception:
             services["database"] = "unavailable"
         try:
             from redis.asyncio import Redis
 
-            redis = Redis.from_url(settings.redis_url)
-            await redis.ping()
+            redis = Redis.from_url(
+                settings.redis_url,
+                socket_connect_timeout=2,
+                socket_timeout=2,
+            )
+            await asyncio.wait_for(redis.ping(), timeout=2)
             await redis.aclose()
             services["redis"] = "ok"
         except Exception:
             services["redis"] = "unavailable"
         try:
-            await __import__("asyncio").to_thread(get_minio_client().bucket_exists, settings.minio_bucket)
+            from fastapi.concurrency import run_in_threadpool
+
+            await asyncio.wait_for(
+                run_in_threadpool(get_minio_client().bucket_exists, settings.minio_bucket),
+                timeout=3,
+            )
             services["minio"] = "ok"
         except Exception:
             services["minio"] = "unavailable"
