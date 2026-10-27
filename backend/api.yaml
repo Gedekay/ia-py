@@ -1,0 +1,1227 @@
+openapi: 3.1.0
+info:
+  title: SAAJD API
+  version: 0.1.0
+  description: >-
+    Contrat REST du Système d'Analyse Assistée de Dossiers Judiciaires. L'API
+    aide à contrôler la complétude et certains points de procédure. Elle ne
+    détermine jamais la culpabilité et ne remplace pas une décision judiciaire.
+servers:
+  - url: http://localhost:8000
+    description: Développement local
+security: []
+tags:
+  - name: health
+  - name: auth
+  - name: users
+  - name: dossiers
+  - name: documents
+  - name: analyses
+  - name: admin
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: health_check_health_get
+      summary: État des dépendances
+      responses:
+        '200':
+          description: L'API répond, éventuellement avec des dépendances indisponibles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: login_api_v1_auth_login_post
+      summary: Ouvrir une session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Jetons d'accès et de renouvellement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refresh_api_v1_auth_refresh_post
+      summary: Renouveler les jetons
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Nouveaux jetons.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout_api_v1_auth_logout_post
+      summary: Révoquer un jeton de renouvellement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Jeton révoqué.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      operationId: me_api_v1_auth_me_get
+      summary: Lire le profil courant
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profil de l'utilisateur authentifié.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/users:
+    get:
+      tags: [users]
+      operationId: list_users_api_v1_users_get
+      summary: Lister les utilisateurs (administrateur)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Utilisateurs enregistrés.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [users]
+      operationId: create_user_api_v1_users_post
+      summary: Créer un utilisateur (administrateur)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: Utilisateur créé.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/users/{user_id}/role:
+    patch:
+      tags: [users]
+      operationId: update_role_api_v1_users__user_id__role_patch
+      summary: Modifier le rôle d'un utilisateur (administrateur)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRoleUpdate'
+      responses:
+        '200':
+          description: Rôle mis à jour.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/users/{user_id}:
+    patch:
+      tags: [users]
+      operationId: update_user_api_v1_users__user_id__patch
+      summary: Modifier un utilisateur (administrateur)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Utilisateur modifié.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [users]
+      operationId: deactivate_user_api_v1_users__user_id__delete
+      summary: Désactiver un utilisateur (administrateur)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: Utilisateur désactivé.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/dossiers:
+    get:
+      tags: [dossiers]
+      operationId: list_dossiers_api_v1_dossiers_get
+      summary: Lister les dossiers accessibles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: statut
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - $ref: '#/components/schemas/StatutDossier'
+              - type: 'null'
+        - name: infraction_type
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Dossiers filtrés et paginés.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DossierRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    post:
+      tags: [dossiers]
+      operationId: create_dossier_api_v1_dossiers_post
+      summary: Créer un dossier
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DossierCreate'
+      responses:
+        '201':
+          description: Dossier créé.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/dossiers/{dossier_id}:
+    get:
+      tags: [dossiers]
+      operationId: get_dossier_api_v1_dossiers__dossier_id__get
+      summary: Lire un dossier
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DossierId'
+      responses:
+        '200':
+          description: Dossier demandé.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [dossiers]
+      operationId: update_dossier_api_v1_dossiers__dossier_id__patch
+      summary: Modifier un dossier
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DossierId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DossierUpdate'
+      responses:
+        '200':
+          description: Dossier modifié.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/dossiers/{dossier_id}/close:
+    post:
+      tags: [dossiers]
+      operationId: close_dossier_api_v1_dossiers__dossier_id__close_post
+      summary: Clore un dossier
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DossierId'
+      responses:
+        '200':
+          description: Dossier clos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/dossiers/{dossier_id}/documents:
+    post:
+      tags: [documents]
+      operationId: upload_document_api_v1_dossiers__dossier_id__documents_post
+      summary: Déposer une pièce au dossier
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DossierId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF, DOCX, TXT, JPEG, PNG ou TIFF.
+      responses:
+        '201':
+          description: Pièce déposée ; extraction lancée en arrière-plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentUploadResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [documents]
+      operationId: list_documents_api_v1_dossiers__dossier_id__documents_get
+      summary: Lister les pièces d'un dossier
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DossierId'
+      responses:
+        '200':
+          description: Pièces non supprimées du dossier.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/documents/{document_id}:
+    get:
+      tags: [documents]
+      operationId: get_document_api_v1_documents__document_id__get
+      summary: Lire les métadonnées d'une pièce
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Métadonnées de la pièce.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [documents]
+      operationId: delete_document_api_v1_documents__document_id__delete
+      summary: Supprimer une pièce (suppression logique)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '204':
+          description: Pièce supprimée et action journalisée.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/documents/{document_id}/download:
+    get:
+      tags: [documents]
+      operationId: download_document_api_v1_documents__document_id__download_get
+      summary: Obtenir une URL de téléchargement temporaire
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: URL MinIO signée, valable cinq minutes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadUrl'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/dossiers/{dossier_id}/analyses:
+    post:
+      tags: [analyses]
+      operationId: start_analysis_api_v1_dossiers__dossier_id__analyses_post
+      summary: Lancer une analyse asynchrone
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DossierId'
+      responses:
+        '202':
+          description: Analyse mise en file d'attente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyseCreateResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [analyses]
+      operationId: list_analyses_api_v1_dossiers__dossier_id__analyses_get
+      summary: Lister l'historique des analyses d'un dossier
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DossierId'
+      responses:
+        '200':
+          description: Analyses du dossier, de la plus récente à la plus ancienne.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnalyseRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/analyses/{analyse_id}:
+    get:
+      tags: [analyses]
+      operationId: get_analysis_api_v1_analyses__analyse_id__get
+      summary: Consulter l'état et le résultat d'une analyse
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnalyseId'
+      responses:
+        '200':
+          description: État et résultat éventuel de l'analyse.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyseRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/analyses/{analyse_id}/report.json:
+    get:
+      tags: [analyses]
+      operationId: export_json_api_v1_analyses__analyse_id__report_json_get
+      summary: Exporter le rapport JSON avec son empreinte SHA-256
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnalyseId'
+      responses:
+        '200':
+          description: Rapport JSON traçable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonReportExport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/analyses/{analyse_id}/report.pdf:
+    get:
+      tags: [analyses]
+      operationId: export_pdf_api_v1_analyses__analyse_id__report_pdf_get
+      summary: Télécharger le rapport PDF
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnalyseId'
+      responses:
+        '200':
+          description: Rapport PDF avec bandeau légal, filigrane et empreinte.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/admin/audit:
+    get:
+      tags: [admin]
+      operationId: list_audit_logs_api_v1_admin_audit_get
+      summary: Consulter le journal d'audit (administrateur)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+            minimum: 1
+      responses:
+        '200':
+          description: Entrées d'audit paginées.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditLogEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/admin/metrics:
+    get:
+      tags: [admin]
+      operationId: get_metrics_api_v1_admin_metrics_get
+      summary: Lire les indicateurs (administrateur)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Compteurs dossiers et analyses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMetrics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/constitution/reload:
+    post:
+      tags: [admin]
+      operationId: reload_constitution_api_v1_admin_constitution_reload_post
+      summary: Demander la réindexation constitutionnelle (administrateur)
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Tâche de réindexation mise en file d'attente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueuedTask'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DossierId:
+      name: dossier_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DocumentId:
+      name: document_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AnalyseId:
+      name: analyse_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Unauthorized:
+      description: Jeton d'accès absent ou invalide.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HttpError'
+    Forbidden:
+      description: Accès refusé ou jeton métier invalide.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/HttpError'
+              - $ref: '#/components/schemas/AppError'
+    NotFound:
+      description: Ressource introuvable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AppError'
+    ValidationError:
+      description: Corps ou paramètre invalide.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, services]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        services:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, unavailable]
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    TokenResponse:
+      type: object
+      required: [access_token, refresh_token]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          default: bearer
+    Role:
+      type: string
+      enum: [ENQUETEUR, MAGISTRAT, ADMIN]
+    UserCreate:
+      type: object
+      required: [email, password, full_name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 12
+          maxLength: 256
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 200
+        role:
+          allOf:
+            - $ref: '#/components/schemas/Role'
+          default: ENQUETEUR
+    UserRead:
+      type: object
+      required: [id, email, full_name, role, is_active, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    UserUpdate:
+      type: object
+      properties:
+        full_name:
+          anyOf:
+            - type: string
+              minLength: 2
+              maxLength: 200
+            - type: 'null'
+        is_active:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+    UserRoleUpdate:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/Role'
+    StatutDossier:
+      type: string
+      enum: [OUVERT, EN_ANALYSE, CLOS]
+    DossierCreate:
+      type: object
+      required: [numero_dossier, infraction_type]
+      properties:
+        numero_dossier:
+          type: string
+          minLength: 1
+          maxLength: 100
+        date_ouverture:
+          type: string
+          format: date
+        infraction_type:
+          type: string
+          minLength: 1
+          maxLength: 160
+        metadata_:
+          type: object
+          additionalProperties: true
+          default: {}
+    DossierUpdate:
+      type: object
+      properties:
+        infraction_type:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 160
+            - type: 'null'
+        statut:
+          anyOf:
+            - $ref: '#/components/schemas/StatutDossier'
+            - type: 'null'
+        metadata_:
+          anyOf:
+            - type: object
+              additionalProperties: true
+            - type: 'null'
+    DossierRead:
+      type: object
+      required: [id, numero_dossier, date_ouverture, infraction_type, statut, metadata_, created_by_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        numero_dossier:
+          type: string
+        date_ouverture:
+          type: string
+          format: date
+        infraction_type:
+          type: string
+        statut:
+          $ref: '#/components/schemas/StatutDossier'
+        metadata_:
+          type: object
+          additionalProperties: true
+        created_by_id:
+          type: string
+          format: uuid
+    TypePiece:
+      type: string
+      enum: [PROCES_VERBAL, INTERROGATOIRE, SAISIE, CERTIFICAT_MEDICAL, TEMOIGNAGE, EXPERTISE, NOTIFICATION_DROITS, AUTRE]
+    DocumentRead:
+      type: object
+      required: [id, dossier_id, filename, type_piece, file_hash_sha256, mime_type, size_bytes, extraction_status, uploaded_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dossier_id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        type_piece:
+          $ref: '#/components/schemas/TypePiece'
+        file_hash_sha256:
+          type: string
+          description: Empreinte SHA-256 du fichier déposé.
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+        extraction_status:
+          type: string
+          enum: [pending, done, failed]
+        uploaded_at:
+          type: string
+          format: date-time
+    DocumentUploadResponse:
+      allOf:
+        - $ref: '#/components/schemas/DocumentRead'
+        - type: object
+          properties:
+            task_id:
+              anyOf:
+                - type: string
+                - type: 'null'
+    DownloadUrl:
+      type: object
+      required: [url, expires_in_seconds]
+      properties:
+        url:
+          type: string
+          format: uri
+        expires_in_seconds:
+          type: string
+          example: '300'
+    GraviteEnum:
+      type: string
+      enum: [INFO, MAJEURE, CRITIQUE]
+    ForceEnum:
+      type: string
+      enum: [INDICE_MATERIEL, TEMOIGNAGE, AVEU]
+    ReferenceConstitutionnelle:
+      type: object
+      additionalProperties: false
+      required: [article, texte, source]
+      properties:
+        article:
+          type: string
+        alinea:
+          anyOf:
+            - type: string
+            - type: 'null'
+        texte:
+          type: string
+          minLength: 1
+        source:
+          type: string
+          minLength: 1
+    ControleProcedure:
+      type: object
+      required: [code, gravite, description, references_constitutionnelles]
+      properties:
+        code:
+          type: string
+        gravite:
+          $ref: '#/components/schemas/GraviteEnum'
+        description:
+          type: string
+        consequence:
+          anyOf:
+            - type: string
+            - type: 'null'
+        references_constitutionnelles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ReferenceConstitutionnelle'
+    ElementACharge:
+      type: object
+      required: [description, force, reference_legale]
+      properties:
+        description:
+          type: string
+        source_document:
+          anyOf:
+            - type: string
+            - type: 'null'
+        force:
+          $ref: '#/components/schemas/ForceEnum'
+        reference_legale:
+          $ref: '#/components/schemas/ReferenceConstitutionnelle'
+    PisteAExplorer:
+      type: object
+      required: [piste, justification, references_constitutionnelles]
+      properties:
+        piste:
+          type: string
+        justification:
+          type: string
+        references_constitutionnelles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ReferenceConstitutionnelle'
+    StatutAnalyse:
+      type: string
+      enum: [PENDING, RUNNING, DONE, ERROR]
+    AnalyseResultat:
+      type: object
+      additionalProperties: false
+      required: [statut_global, synthese, controles_procedure, elements_a_charge, pistes_a_explorer, recommandation_finale]
+      properties:
+        statut_global:
+          type: string
+        avertissement_legal:
+          type: string
+          default: "Outil d'aide. La présomption d'innocence prévaut (Art. 17 al. 9, Constitution RDC)."
+        synthese:
+          type: object
+          additionalProperties:
+            anyOf:
+              - type: integer
+              - type: string
+        controles_procedure:
+          type: array
+          items:
+            $ref: '#/components/schemas/ControleProcedure'
+        elements_a_charge:
+          type: array
+          description: Indices uniquement ; jamais une conclusion de culpabilité.
+          items:
+            $ref: '#/components/schemas/ElementACharge'
+        pistes_a_explorer:
+          type: array
+          items:
+            $ref: '#/components/schemas/PisteAExplorer'
+        recommandation_finale:
+          type: string
+    AnalyseCreateResponse:
+      type: object
+      required: [analyse_id, statut]
+      properties:
+        analyse_id:
+          type: string
+          format: uuid
+        statut:
+          $ref: '#/components/schemas/StatutAnalyse'
+    AnalyseRead:
+      type: object
+      required: [id, dossier_id, statut, resultat, error_message, created_at, finished_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dossier_id:
+          type: string
+          format: uuid
+        statut:
+          $ref: '#/components/schemas/StatutAnalyse'
+        resultat:
+          anyOf:
+            - $ref: '#/components/schemas/AnalyseResultat'
+            - type: 'null'
+        error_message:
+          anyOf:
+            - type: string
+            - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+        finished_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+    JsonReportExport:
+      type: object
+      required: [generated_at, generated_by, resultat, hash_sha256]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        generated_by:
+          type: string
+          format: email
+        resultat:
+          $ref: '#/components/schemas/AnalyseResultat'
+        hash_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+    AuditLogEntry:
+      type: object
+      required: [id, action, resource_type, timestamp]
+      properties:
+        id:
+          type: integer
+        user_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        action:
+          type: string
+        resource_type:
+          type: string
+        resource_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+        ip_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+        timestamp:
+          type: string
+          format: date-time
+    AdminMetrics:
+      type: object
+      required: [dossiers, analyses, analyses_en_erreur]
+      properties:
+        dossiers:
+          type: integer
+        analyses:
+          type: integer
+        analyses_en_erreur:
+          type: integer
+    QueuedTask:
+      type: object
+      required: [task_id, status]
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          enum: [queued]
+    AppError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        request_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+    HttpError:
+      type: object
+      properties:
+        detail:
+          type: string
+    ValidationErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+    ValidationIssue:
+      type: object
+      required: [loc, msg, type]
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+        input: {}
+        ctx:
+          type: object
+          additionalProperties: true
